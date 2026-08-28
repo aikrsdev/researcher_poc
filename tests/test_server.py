@@ -1,4 +1,3 @@
-import httpx
 from fastapi.testclient import TestClient
 from server import create_app
 
@@ -10,7 +9,7 @@ class StubGraph:
 
 class FailingGraph:
     def invoke(self, state):
-        raise httpx.ConnectError("connection refused")
+        raise ConnectionError("connection refused")
 
 
 def test_query_returns_answer_and_sources():

@@ -21,7 +21,7 @@ def create_app(graph, ollama_base_url: str) -> FastAPI:
             result = graph.invoke(
                 {"question": request.question, "search_results": [], "findings": "", "answer": ""}
             )
-        except httpx.ConnectError:
+        except (ConnectionError, httpx.ConnectError, httpx.TimeoutException):
             raise HTTPException(
                 status_code=503,
                 detail=f"Ollama not reachable at {ollama_base_url}",
