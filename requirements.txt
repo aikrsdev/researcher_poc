@@ -1,0 +1,8 @@
+fastapi
+uvicorn[standard]
+langgraph
+tavily-python
+ollama
+httpx
+pydantic
+pytest
