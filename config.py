@@ -1,22 +1,17 @@
 import os
 from dataclasses import dataclass
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
 
 @dataclass
 class Settings:
-    ollama_model: str
-    ollama_base_url: str
-    tavily_api_key: str | None
+    claude_model: str
 
 
 def load_settings() -> Settings:
     return Settings(
-        ollama_model=os.environ.get("OLLAMA_MODEL", "llama3.2"),
-        ollama_base_url=os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434"),
-        tavily_api_key=os.environ.get("TAVILY_API_KEY"),
+        claude_model=os.environ.get("CLAUDE_MODEL", "claude-haiku-4-5"),
     )
-
-
-def validate(settings: Settings) -> None:
-    if not settings.tavily_api_key:
-        raise RuntimeError("TAVILY_API_KEY environment variable is required")

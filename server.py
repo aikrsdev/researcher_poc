@@ -1,6 +1,11 @@
-import httpx
+import logging
+
+import anthropic
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
+logger = logging.getLogger(__name__)
 
 
 class QueryRequest(BaseModel):
@@ -9,38 +14,51 @@ class QueryRequest(BaseModel):
 
 class QueryResponse(BaseModel):
     answer: str
-    sources: list[str]
 
 
-def create_app(graph, ollama_base_url: str) -> FastAPI:
+def create_app(graph, moderator) -> FastAPI:
     app = FastAPI()
 
     @app.post("/query", response_model=QueryResponse)
     def query(request: QueryRequest):
-        try:
-            result = graph.invoke(
-                {"question": request.question, "search_results": [], "findings": "", "answer": ""}
-            )
-        except (ConnectionError, httpx.ConnectError, httpx.TimeoutException):
-            raise HTTPException(
-                status_code=503,
-                detail=f"Ollama not reachable at {ollama_base_url}",
-            )
+        logger.info("received query: question=%r", request.question)
 
-        sources = [r["url"] for r in result.get("search_results", []) if r.get("url")]
-        return QueryResponse(answer=result["answer"], sources=sources)
+        try:
+            is_safe, reason = moderator.check(request.question)
+            if not is_safe:
+                logger.info("query blocked: reason=%r", reason)
+                raise HTTPException(status_code=400, detail=f"Request blocked: {reason}")
+
+            result = graph.invoke({"question": request.question, "findings": "", "answer": ""})
+        except anthropic.AuthenticationError:
+            logger.error("claude api authentication failed")
+            raise HTTPException(status_code=500, detail="Claude API authentication failed — check ANTHROPIC_API_KEY")
+        except anthropic.RateLimitError:
+            logger.error("claude api rate limited")
+            raise HTTPException(status_code=429, detail="Claude API rate limit exceeded")
+        except anthropic.APIConnectionError:
+            logger.error("claude api unreachable")
+            raise HTTPException(status_code=503, detail="Claude API not reachable")
+        except anthropic.APIStatusError as e:
+            logger.error("claude api error: %s", e)
+            raise HTTPException(status_code=502, detail=f"Claude API error: {e}")
+
+        logger.info("query complete: answer=%d chars", len(result["answer"]))
+
+        return QueryResponse(answer=result["answer"])
 
     return app
 
 
-from config import load_settings, validate  # noqa: E402
+from config import load_settings  # noqa: E402
 from agents.researcher import Researcher  # noqa: E402
 from agents.writer import Writer  # noqa: E402
+from agents.moderator import Moderator  # noqa: E402
 from orchestrator import build_graph  # noqa: E402
 
 _settings = load_settings()
-validate(_settings)
-_researcher = Researcher.from_config(_settings.tavily_api_key, _settings.ollama_base_url, _settings.ollama_model)
-_writer = Writer.from_config(_settings.ollama_base_url, _settings.ollama_model)
+_researcher = Researcher.from_config(_settings.claude_model)
+_writer = Writer.from_config(_settings.claude_model)
+_moderator = Moderator.from_config(_settings.claude_model)
 _graph = build_graph(_researcher, _writer)
-app = create_app(_graph, _settings.ollama_base_url)
+app = create_app(_graph, _moderator)

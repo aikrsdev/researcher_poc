@@ -5,7 +5,6 @@ from langgraph.graph import END, START, StateGraph
 
 class GraphState(TypedDict):
     question: str
-    search_results: list
     findings: str
     answer: str
 

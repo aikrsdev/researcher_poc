@@ -3,7 +3,7 @@ from orchestrator import build_graph
 
 class StubResearcher:
     def run(self, state):
-        return {**state, "search_results": [], "findings": "stub findings"}
+        return {**state, "findings": "stub findings"}
 
 
 class StubWriter:
@@ -15,7 +15,7 @@ class StubWriter:
 def test_graph_runs_researcher_then_writer():
     graph = build_graph(StubResearcher(), StubWriter())
 
-    result = graph.invoke({"question": "q", "search_results": [], "findings": "", "answer": ""})
+    result = graph.invoke({"question": "q", "findings": "", "answer": ""})
 
     assert result["findings"] == "stub findings"
     assert result["answer"] == "stub answer"

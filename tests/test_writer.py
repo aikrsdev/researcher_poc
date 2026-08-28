@@ -1,16 +1,22 @@
+from types import SimpleNamespace
+
 from agents.writer import Writer
 
 
-class FakeOllama:
-    def chat(self, model, messages):
-        return {"message": {"content": "final synthesized answer"}}
+class FakeMessages:
+    def create(self, model, max_tokens, messages):
+        return SimpleNamespace(content=[SimpleNamespace(type="text", text="final synthesized answer")])
+
+
+class FakeClaude:
+    def __init__(self):
+        self.messages = FakeMessages()
 
 
 def test_writer_produces_answer_from_findings():
-    writer = Writer(FakeOllama(), "llama3.2")
+    writer = Writer(FakeClaude(), "claude-haiku-4-5")
     state = {
         "question": "What is LangGraph?",
-        "search_results": [],
         "findings": "LangGraph is a graph-based orchestration library.",
         "answer": "",
     }

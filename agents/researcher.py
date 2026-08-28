@@ -1,44 +1,35 @@
-from tavily import TavilyClient
-from ollama import Client as OllamaClient
+import logging
+
+import anthropic
+
+logger = logging.getLogger(__name__)
 
 
 class Researcher:
-    def __init__(self, tavily_client, ollama_client, model: str):
-        self.tavily = tavily_client
-        self.ollama = ollama_client
+    def __init__(self, claude_client, model: str):
+        self.claude = claude_client
         self.model = model
 
     @classmethod
-    def from_config(cls, tavily_api_key: str, ollama_base_url: str, ollama_model: str) -> "Researcher":
-        return cls(
-            TavilyClient(api_key=tavily_api_key),
-            OllamaClient(host=ollama_base_url),
-            ollama_model,
-        )
+    def from_config(cls, claude_model: str) -> "Researcher":
+        return cls(anthropic.Anthropic(), claude_model)
 
     def run(self, state: dict) -> dict:
         question = state["question"]
 
-        try:
-            search_response = self.tavily.search(query=question)
-            results = search_response.get("results", [])
-        except Exception:
-            return {
-                **state,
-                "search_results": [],
-                "findings": "Web search failed; answering from model knowledge only.",
-            }
+        logger.info("researcher: gathering findings for question=%r", question)
 
-        results_text = "\n\n".join(
-            f"Source: {r.get('url')}\n{r.get('content', '')}" for r in results
-        )
         prompt = (
             f"Question: {question}\n\n"
-            f"Search results:\n{results_text}\n\n"
-            "Summarize the key findings relevant to the question. "
-            "Keep source URLs alongside the facts they support."
+            "Summarize the key facts relevant to this question, from your own knowledge."
         )
-        response = self.ollama.chat(model=self.model, messages=[{"role": "user", "content": prompt}])
-        findings = response["message"]["content"]
+        response = self.claude.messages.create(
+            model=self.model,
+            max_tokens=1024,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        findings = next((b.text for b in response.content if b.type == "text"), "")
 
-        return {**state, "search_results": results, "findings": findings}
+        logger.info("researcher: findings ready (%d chars)", len(findings))
+
+        return {**state, "findings": findings}

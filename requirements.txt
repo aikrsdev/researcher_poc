@@ -2,8 +2,7 @@ fastapi
 uvicorn[standard]
 langgraph
 typing_extensions>=4.16.0
-tavily-python==0.8.0
-ollama==0.6.2
-httpx
+anthropic
+python-dotenv
 pydantic
 pytest

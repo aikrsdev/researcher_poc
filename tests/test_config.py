@@ -1,38 +1,17 @@
-import pytest
-from config import Settings, load_settings, validate
+from config import load_settings
 
 
 def test_load_settings_defaults(monkeypatch):
-    monkeypatch.delenv("OLLAMA_MODEL", raising=False)
-    monkeypatch.delenv("OLLAMA_BASE_URL", raising=False)
-    monkeypatch.setenv("TAVILY_API_KEY", "test-key")
+    monkeypatch.delenv("CLAUDE_MODEL", raising=False)
 
     settings = load_settings()
 
-    assert settings.ollama_model == "llama3.2"
-    assert settings.ollama_base_url == "http://localhost:11434"
-    assert settings.tavily_api_key == "test-key"
+    assert settings.claude_model == "claude-haiku-4-5"
 
 
 def test_load_settings_reads_overrides(monkeypatch):
-    monkeypatch.setenv("OLLAMA_MODEL", "custom-model")
-    monkeypatch.setenv("OLLAMA_BASE_URL", "http://example:1234")
-    monkeypatch.setenv("TAVILY_API_KEY", "key")
+    monkeypatch.setenv("CLAUDE_MODEL", "claude-opus-5")
 
     settings = load_settings()
 
-    assert settings.ollama_model == "custom-model"
-    assert settings.ollama_base_url == "http://example:1234"
-
-
-def test_validate_raises_without_tavily_key():
-    settings = Settings(ollama_model="m", ollama_base_url="url", tavily_api_key=None)
-
-    with pytest.raises(RuntimeError):
-        validate(settings)
-
-
-def test_validate_passes_with_tavily_key():
-    settings = Settings(ollama_model="m", ollama_base_url="url", tavily_api_key="key")
-
-    validate(settings)
+    assert settings.claude_model == "claude-opus-5"
