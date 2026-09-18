@@ -21,13 +21,21 @@ The pipeline is served over a small FastAPI app.
 
 ## Configuration
 
-| Variable            | Required | Default            |
-|----------------------|----------|---------------------|
-| `ANTHROPIC_API_KEY`  | Yes      | —                   |
-| `CLAUDE_MODEL`       | No       | `claude-haiku-4-5`  |
+| Variable                | Required | Default            |
+|--------------------------|----------|---------------------|
+| `ANTHROPIC_API_KEY`      | Yes      | —                   |
+| `CLAUDE_MODEL`           | No       | `claude-haiku-4-5`  |
+| `API_KEY`                | Yes      | —                   |
+| `RATE_LIMIT_PER_MINUTE`  | No       | `20`                |
 
 Copy `.env.example` to `.env` and fill in your key — `config.py` loads
 it automatically (`.env` is gitignored, never committed).
+
+`API_KEY` is a secret you choose (e.g. `python3 -c "import secrets;
+print(secrets.token_urlsafe(32))"`) — clients must send it in an
+`X-API-Key` header on every request to `/query`. Requests are also
+rate-limited per client IP (`RATE_LIMIT_PER_MINUTE`, sliding 60s
+window).
 
 ## Running
 
@@ -44,6 +52,7 @@ Then:
 ```bash
 curl -X POST http://localhost:8000/query \
   -H "Content-Type: application/json" \
+  -H "X-API-Key: $API_KEY" \
   -d '{"question": "What is LangGraph?"}'
 ```
 
